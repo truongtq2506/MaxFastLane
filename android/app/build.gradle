@@ -79,7 +79,7 @@ import org.apache.tools.ant.taskdefs.condition.Os
  */
 
 project.ext.react = [
-    enableHermes: false,  // clean and rebuild if changing
+        enableHermes: false,  // clean and rebuild if changing
 ]
 
 apply from: "../../node_modules/react-native/react.gradle"
@@ -121,6 +121,13 @@ def jscFlavor = 'org.webkit:android-jsc:+'
  */
 def enableHermes = project.ext.react.get("enableHermes", false);
 
+def keystorePropertiesFile = rootProject.file('secure/keystore.properties')
+def keystoreProperties = null
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties = new Properties()
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 /**
  * Architectures to build native code for.
  */
@@ -138,7 +145,7 @@ android {
         applicationId "com.maxfastlane"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 8
         versionName "1.0"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
 
@@ -147,12 +154,12 @@ android {
             externalNativeBuild {
                 ndkBuild {
                     arguments "APP_PLATFORM=android-21",
-                        "APP_STL=c++_shared",
-                        "NDK_TOOLCHAIN_VERSION=clang",
-                        "GENERATED_SRC_DIR=$buildDir/generated/source",
-                        "PROJECT_BUILD_DIR=$buildDir",
-                        "REACT_ANDROID_DIR=$rootDir/../node_modules/react-native/ReactAndroid",
-                        "REACT_ANDROID_BUILD_DIR=$rootDir/../node_modules/react-native/ReactAndroid/build"
+                            "APP_STL=c++_shared",
+                            "NDK_TOOLCHAIN_VERSION=clang",
+                            "GENERATED_SRC_DIR=$buildDir/generated/source",
+                            "PROJECT_BUILD_DIR=$buildDir",
+                            "REACT_ANDROID_DIR=$rootDir/../node_modules/react-native/ReactAndroid",
+                            "REACT_ANDROID_BUILD_DIR=$rootDir/../node_modules/react-native/ReactAndroid/build"
                     cFlags "-Wall", "-Werror", "-fexceptions", "-frtti", "-DWITH_INSPECTOR=1"
                     cppFlags "-std=c++17"
                     // Make sure this target name is the same you specify inside the
@@ -166,7 +173,7 @@ android {
             }
             if (!enableSeparateBuildPerCPUArchitecture) {
                 ndk {
-                    abiFilters (*reactNativeArchitectures())
+                    abiFilters(*reactNativeArchitectures())
                 }
             }
         }
@@ -218,21 +225,25 @@ android {
             reset()
             enable enableSeparateBuildPerCPUArchitecture
             universalApk false  // If true, also generate a universal APK
-            include (*reactNativeArchitectures())
+            include(*reactNativeArchitectures())
         }
     }
     signingConfigs {
         debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+            if (keystoreProperties != null) {
+                storeFile rootProject.file(keystoreProperties['debug.storeFile'])
+                storePassword keystoreProperties['debug.storePassword']
+                keyAlias keystoreProperties['debug.keyAlias']
+                keyPassword keystoreProperties['debug.keyPassword']
+            }
         }
         release {
-            storeFile file(System.getenv("RELEASE_STORE_FILE"))
-            storePassword System.getenv("RELEASE_STORE_PASSWORD")
-            keyAlias System.getenv("RELEASE_KEY_ALIAS")
-            keyPassword  System.getenv("RELEASE_KEY_PASSWORD")
+            if (keystoreProperties != null) {
+                storeFile rootProject.file(keystoreProperties['release.storeFile'])
+                storePassword keystoreProperties['release.storePassword']
+                keyAlias keystoreProperties['release.keyAlias']
+                keyPassword keystoreProperties['release.keyPassword']
+            }
         }
     }
     buildTypes {
@@ -242,9 +253,9 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            signingConfig signingConfigs.release
         }
     }
 
@@ -274,16 +285,16 @@ dependencies {
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
 
     debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}") {
-        exclude group:'com.facebook.fbjni'
+        exclude group: 'com.facebook.fbjni'
     }
 
     debugImplementation("com.facebook.flipper:flipper-network-plugin:${FLIPPER_VERSION}") {
-        exclude group:'com.facebook.flipper'
-        exclude group:'com.squareup.okhttp3', module:'okhttp'
+        exclude group: 'com.facebook.flipper'
+        exclude group: 'com.squareup.okhttp3', module: 'okhttp'
     }
 
     debugImplementation("com.facebook.flipper:flipper-fresco-plugin:${FLIPPER_VERSION}") {
-        exclude group:'com.facebook.flipper'
+        exclude group: 'com.facebook.flipper'
     }
 
     if (enableHermes) {
